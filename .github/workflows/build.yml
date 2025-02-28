@@ -4,10 +4,15 @@ on:
   workflow_dispatch:
   schedule:
     # Run every Sunday at midnight
-    - cron:  '0 0 * * 0'
+    - cron: '0 0 * * 0'
   push:
     branches:
       - main
+    paths:
+      - config.yaml
+      - poetry.lock
+      - pyproject.toml
+      - sgsdb/**
 
 jobs:
   build:
@@ -28,16 +33,14 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
-    - name: Generate the database (quick)
-      if: ${{ github.event_name == 'push' }}
+    - name: Generate the database
       run: |
         echo "version=$(date '+%Y%m%d%H%M%S')" >> "$GITHUB_ENV"
-        poetry run sgs-db "db.json"
-    - name: Generate the database (verify)
-      if: ${{ github.event_name == 'schedule' }}
-      run: |
-        echo "version=$(date '+%Y%m%d%H%M%S')" >> "$GITHUB_ENV"
-        poetry run sgs-db -V "db.json"
+        if [ "${{ github.event_name }}" = "push" ]; then
+          poetry run sgs-db "db.json"
+        else
+          poetry run sgs-db -V "db.json"
+        fi
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
       with:
